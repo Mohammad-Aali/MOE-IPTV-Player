@@ -627,8 +627,10 @@ function getHTML() {
 <meta name="robots" content="nofollow, noindex" />
 <script src="https://cdn.tailwindcss.com"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"><\/script>
+<script src="https://cdn.plyr.io/3.7.8/plyr.js"><\/script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
 <script>
 tailwind.config = {
 theme: {
@@ -679,6 +681,23 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
 #sidebar.collapsed #collapse-icon { transform: rotate(180deg); }
 #settings-modal { display: none; }
 #settings-modal.open { display: flex; }
+
+/* Custom adjustments for Plyr styles */
+.plyr {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0; left: 0;
+  z-index: 0;
+  --plyr-color-main: #2D5BE3;
+}
+.plyr__video-wrapper {
+  height: 100% !important;
+}
+.plyr video {
+  object-fit: contain !important;
+  height: 100% !important;
+}
 </style>
 </head>
 <body class="bg-tv-bg text-white h-screen overflow-hidden flex selection:bg-gray-700">
@@ -711,7 +730,7 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
             </div>
         </div>
         
-        <div class="px-6 pb-6 shrink-0">
+        <div class="p-6 border-t border-[#2A2B36] shrink-0">
             <button id="save-sources-btn" onclick="saveSources()" class="w-full bg-[#2D5BE3] hover:bg-blue-600 transition-colors font-medium py-3.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm">
                 <span class="material-icons" style="font-size: 18px;">save</span>
                 <span id="save-btn-text">Save & Reload Channels</span>
@@ -781,7 +800,29 @@ class="w-full bg-tv-card border border-transparent rounded-lg pl-10 pr-4 py-2.5 
 </div>
 
 <script>
-const video = document.getElementById('video-player');
+let player;
+let hls;
+
+// Re-usable Plyr initialization function. It queries the DOM fresh every time to avoid Detached Node references.
+function initializePlyr(options = {}) {
+    if (player) {
+        player.destroy();
+    }
+    const freshVideo = document.getElementById('video-player');
+    
+    const defaultOptions = {
+        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+        settings: ['quality', 'speed'],
+        keyboard: { focused: true, global: true }
+    };
+    
+    const mergedOptions = Object.assign({}, defaultOptions, options);
+    player = new Plyr(freshVideo, mergedOptions);
+}
+
+// Initial instantiation on page load
+initializePlyr();
+
 const categoryListEl = document.getElementById('category-list');
 const channelListEl = document.getElementById('channel-list');
 const categoryHeader = document.getElementById('category-header');
@@ -795,7 +836,6 @@ const sidebar = document.getElementById('sidebar');
 const collapseBtn = document.getElementById('collapse-btn');
 const settingsModal = document.getElementById('settings-modal');
 
-let hls;
 let globalChannelsData = [];
 let categories = {};
 let activeCategoryBtn = null;
@@ -1011,15 +1051,114 @@ searchInput.addEventListener('input', (e) => {
 });
 
 function playStream(url) {
+    // 1. Completely destroy current Plyr to release the DOM element and restore a clean <video id="video-player">
+    if (player) {
+        player.destroy();
+        player = null;
+    }
+
+    const nativeVideo = document.getElementById('video-player');
+
     if (Hls.isSupported()) {
         if (hls) hls.destroy();
-        hls = new Hls({ maxBufferSize: 0, maxBufferLength: 30, liveSyncDurationCount: 3 });
+        
+        // Deep buffer, error-resilient settings optimized for low-speed and unstable connections
+        hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: false,
+            backBufferLength: 90,             // Retain loaded frames in back buffer
+            maxBufferLength: 120,            // Buffer heavily forward (up to 2 minutes)
+            maxMaxBufferLength: 300,         // Absolute maximum forward cache limit (5 minutes)
+            maxBufferSize: 150 * 1024 * 1024,// Maximum buffer memory size (150MB)
+            
+            // Build a massive cushion behind the live edge to prevent stuttering/dropouts
+            liveSyncDurationCount: 15,       // Start playback only when 15 segments are cached in buffer
+            liveMaxLatencyDurationCount: 22,
+            
+            // Start very conservatively to prevent startup stalls
+            abrEwmaDefaultEstimate: 150000,  // Assume slow speed (150kbps) on stream initialization
+            abrBandwidthFactor: 0.6,         // Scale down bandwidth estimation to be safe
+            abrBandwidthUpFactor: 0.4,       // Restrict easy switching to higher bitrates
+            
+            // Extended timeouts and heavy retry counts for low-speed network recovery
+            fragLoadingTimeOut: 30000,
+            manifestLoadingTimeOut: 30000,
+            levelLoadingTimeOut: 30000,
+            fragLoadingMaxRetry: 15,
+            manifestLoadingMaxRetry: 15,
+            levelLoadingMaxRetry: 15,
+            fragLoadingRetryDelay: 1500,
+            manifestLoadingRetryDelay: 1500,
+            levelLoadingRetryDelay: 1500
+        });
+        
         hls.loadSource(url); 
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url; 
-        video.play();
+        hls.attachMedia(nativeVideo);
+        
+        // Automatic Error Management to keep stream playing on network drops
+        hls.on(Hls.Events.ERROR, function (event, data) {
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.warn("Fatal Network error occurred. Re-trying load segment...");
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.warn("Fatal Media error occurred. Attempting recovery...");
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        console.error("Fatal error. Auto-reloading source in 3 seconds...");
+                        setTimeout(() => playStream(url), 3000);
+                        break;
+                }
+            }
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            const availableQualities = hls.levels.map(l => l.height).filter(h => h);
+            const uniqueQualities = [...new Set(availableQualities)].sort((a, b) => b - a);
+            
+            const plyrOptions = {};
+            if (uniqueQualities.length > 0) {
+                uniqueQualities.unshift(0); // 0 acts as "Auto"
+                
+                plyrOptions.quality = {
+                    default: 0,
+                    options: uniqueQualities,
+                    forced: true,
+                    onChange: (quality) => {
+                        if (quality === 0) {
+                            hls.currentLevel = -1; // -1 represents adaptive quality in Hls.js
+                        } else {
+                            const levelIndex = hls.levels.findIndex(l => l.height === quality);
+                            if (levelIndex !== -1) {
+                                hls.currentLevel = levelIndex; // Forces instant quality switch
+                            }
+                        }
+                    }
+                };
+            }
+            
+            // Safe, dynamic re-instantiation of Plyr on the freshly fetched DOM video element
+            const freshVideo = document.getElementById('video-player');
+            player = new Plyr(freshVideo, {
+                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+                settings: ['quality', 'speed'],
+                keyboard: { focused: true, global: true },
+                ...plyrOptions
+            });
+            
+            player.play().catch(() => {});
+        });
+    } else if (nativeVideo.canPlayType('application/vnd.apple.mpegurl')) {
+        nativeVideo.src = url; 
+        player = new Plyr(nativeVideo, {
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+            settings: ['quality', 'speed'],
+            keyboard: { focused: true, global: true }
+        });
+        player.play().catch(() => {});
     }
 }
 
