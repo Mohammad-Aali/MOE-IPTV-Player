@@ -627,8 +627,10 @@ function getHTML() {
 <meta name="robots" content="nofollow, noindex" />
 <script src="https://cdn.tailwindcss.com"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"><\/script>
+<script src="https://cdn.plyr.io/3.7.8/plyr.js"><\/script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
 <script>
 tailwind.config = {
 theme: {
@@ -679,6 +681,23 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
 #sidebar.collapsed #collapse-icon { transform: rotate(180deg); }
 #settings-modal { display: none; }
 #settings-modal.open { display: flex; }
+
+/* Custom adjustments for Plyr styles */
+.plyr {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0; left: 0;
+  z-index: 0;
+  --plyr-color-main: #2D5BE3;
+}
+.plyr__video-wrapper {
+  height: 100% !important;
+}
+.plyr video {
+  object-fit: contain !important;
+  height: 100% !important;
+}
 </style>
 </head>
 <body class="bg-tv-bg text-white h-screen overflow-hidden flex selection:bg-gray-700">
@@ -711,7 +730,7 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
             </div>
         </div>
         
-        <div class="px-6 pb-6 shrink-0">
+        <div class="p-6 border-t border-[#2A2B36] shrink-0">
             <button id="save-sources-btn" onclick="saveSources()" class="w-full bg-[#2D5BE3] hover:bg-blue-600 transition-colors font-medium py-3.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm">
                 <span class="material-icons" style="font-size: 18px;">save</span>
                 <span id="save-btn-text">Save & Reload Channels</span>
@@ -781,7 +800,34 @@ class="w-full bg-tv-card border border-transparent rounded-lg pl-10 pr-4 py-2.5 
 </div>
 
 <script>
-const video = document.getElementById('video-player');
+let player;
+let hls;
+
+// Re-usable Plyr initialization function. It queries the DOM fresh every time to avoid Detached Node references.
+function initializePlyr(options = {}) {
+    if (player) {
+        player.destroy();
+    }
+    const freshVideo = document.getElementById('video-player');
+    
+    const defaultOptions = {
+        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+        settings: ['quality', 'speed'],
+        keyboard: { focused: true, global: true },
+        i18n: {
+            qualityLabel: {
+                0: 'Auto'
+            }
+        }
+    };
+    
+    const mergedOptions = Object.assign({}, defaultOptions, options);
+    player = new Plyr(freshVideo, mergedOptions);
+}
+
+// Initial instantiation on page load
+initializePlyr();
+
 const categoryListEl = document.getElementById('category-list');
 const channelListEl = document.getElementById('channel-list');
 const categoryHeader = document.getElementById('category-header');
@@ -795,7 +841,6 @@ const sidebar = document.getElementById('sidebar');
 const collapseBtn = document.getElementById('collapse-btn');
 const settingsModal = document.getElementById('settings-modal');
 
-let hls;
 let globalChannelsData = [];
 let categories = {};
 let activeCategoryBtn = null;
@@ -1011,15 +1056,203 @@ searchInput.addEventListener('input', (e) => {
 });
 
 function playStream(url) {
+    // 1. Completely destroy current Plyr to release the DOM element and restore a clean <video id="video-player">
+    if (player) {
+        player.destroy();
+        player = null;
+    }
+
+    const nativeVideo = document.getElementById('video-player');
+
     if (Hls.isSupported()) {
         if (hls) hls.destroy();
-        hls = new Hls({ maxBufferSize: 0, maxBufferLength: 30, liveSyncDurationCount: 3 });
+        
+        let initialEstimate = 120000; // 120kbps very light default
+        let maxBufferLength = 120;
+        let syncDuration = 15;
+
+        // Auto detect slow/unstable network types using browser Connection API
+        if (navigator.connection) {
+            const conn = navigator.connection;
+            if (conn.effectiveType === '2g' || conn.effectiveType === '3g' || conn.saveData || (conn.downlink && conn.downlink < 0.8)) {
+                initialEstimate = 70000; // 70kbps starting point (practically audio bandwidth requirements)
+                maxBufferLength = 180;   // Buffer up to 3 minutes
+                syncDuration = 20;       // Buffer 20 segments behind live edge to survive network drops
+            }
+        }
+        
+        // Deep buffer, error-resilient settings optimized for low-speed and unstable connections
+        hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: false,
+            progressive: true,               // Progressive fragment appending (starts feeding MSE immediately as bytes arrive)
+            backBufferLength: 90,             // Retain loaded frames in back buffer
+            maxBufferLength: maxBufferLength, 
+            maxMaxBufferLength: 300,         // Absolute maximum forward cache limit (5 minutes)
+            maxBufferSize: 120 * 1024 * 1024,// Maximum buffer memory size (120MB)
+            
+            // Build a massive cushion behind the live edge to prevent stuttering/dropouts
+            liveSyncDurationCount: syncDuration,       
+            liveMaxLatencyDurationCount: syncDuration + 8,
+            
+            // Adaptive Bitrate conservative setup
+            abrEwmaDefaultEstimate: initialEstimate,  
+            abrBandwidthFactor: 0.5,         // Scale down bandwidth estimation heavily to prevent buffer starvation
+            abrBandwidthUpFactor: 0.3,       // Make it extremely hard to switch to higher bitrates unnecessarily
+            
+            // Extended timeouts and heavy retry counts for low-speed network recovery
+            fragLoadingTimeOut: 35000,
+            manifestLoadingTimeOut: 35000,
+            levelLoadingTimeOut: 35000,
+            fragLoadingMaxRetry: 20,
+            manifestLoadingMaxRetry: 20,
+            levelLoadingMaxRetry: 20,
+            fragLoadingRetryDelay: 2000,
+            manifestLoadingRetryDelay: 2000,
+            levelLoadingRetryDelay: 2000
+        });
+        
         hls.loadSource(url); 
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url; 
-        video.play();
+        hls.attachMedia(nativeVideo);
+        
+        // Error Recovery Listeners to keep stream alive during drops
+        hls.on(Hls.Events.ERROR, function (event, data) {
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.warn("Fatal Network error occurred. Re-trying load segment...");
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.warn("Fatal Media error occurred. Attempting recovery...");
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        console.error("Unrecoverable error. Reloading source in 3s...");
+                        setTimeout(() => playStream(url), 3000);
+                        break;
+                }
+            }
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            // Retrieve available stream qualities (heights)
+            const availableQualities = hls.levels.map(l => l.height).filter(h => h);
+            
+            // Deduplicate and sort qualities from highest to lowest
+            let uniqueQualities = [...new Set(availableQualities)].sort((a, b) => b - a);
+            
+            let isWeakConnection = false;
+            let maxCappedHeight = 360; // Max default cap on weak connections
+
+            if (navigator.connection) {
+                const conn = navigator.connection;
+                if (conn.effectiveType === '2g' || conn.effectiveType === '3g' || conn.saveData || (conn.downlink && conn.downlink < 0.8)) {
+                    isWeakConnection = true;
+                    maxCappedHeight = 240; // Force maximum quality cap to 240p on highly weak connections to ensure zero-cut
+                }
+            }
+
+            const plyrOptions = {};
+            if (uniqueQualities.length > 0) {
+                // If network connection is weak, limit qualities to capped height (dynamic cap)
+                if (isWeakConnection || maxCappedHeight === 240) {
+                    console.log("Weak connection detected. Capping max HLS level to " + maxCappedHeight + "p.");
+                    const cappedLevels = hls.levels.filter(l => l.height && l.height <= maxCappedHeight);
+                    if (cappedLevels.length > 0) {
+                        const maxLevelHeight = Math.max(...cappedLevels.map(l => l.height));
+                        const maxLevelIndex = hls.levels.findIndex(l => l.height === maxLevelHeight);
+                        hls.maxSupportedLevel = maxLevelIndex; // Hard cap HLS auto level
+                        uniqueQualities = uniqueQualities.filter(q => q <= maxCappedHeight); // Cap user settings list
+                    }
+                }
+
+                // Add Auto (0) to the beginning of the list
+                uniqueQualities.unshift(0);
+                
+                plyrOptions.quality = {
+                    default: 0, // Default to Auto
+                    options: uniqueQualities,
+                    forced: true, // Prevents Plyr from rewriting standard source URLs
+                    onChange: (quality) => {
+                        if (quality === 0) {
+                            hls.currentLevel = -1; // -1 triggers HLS.js adaptive auto bitrate selection
+                        } else {
+                            const levelIndex = hls.levels.findIndex(l => l.height === quality);
+                            if (levelIndex !== -1) {
+                                hls.currentLevel = levelIndex; // Forces instantaneous switch to the manual level
+                            }
+                        }
+                    }
+                };
+            }
+            
+            // LEVEL_SWITCHED listener to update "Auto (360p)" text inside settings menu dynamically (removes ugly "0p")
+            hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+                const span = document.querySelector(".plyr__menu__container [data-plyr='quality'][value='0'] span");
+                if (span) {
+                    if (hls.autoLevelEnabled && hls.levels[data.level]) {
+                        const height = hls.levels[data.level].height;
+                        span.innerHTML = height ? "Auto (" + height + "p)" : "Auto";
+                    } else {
+                        span.innerHTML = "Auto";
+                    }
+                }
+            });
+
+            // ADVANCED ANTI-STALL BUFFER MONITOR:
+            // Detect repeated buffering. If we hit 3 seconds of continuous waiting, instantly force lowest possible quality bandwidth-wise (almost audio-only).
+            let stallTimer;
+            nativeVideo.addEventListener('waiting', () => {
+                clearTimeout(stallTimer);
+                stallTimer = setTimeout(() => {
+                    console.warn("Buffer stalled for 3s. Instantly dropping quality to the lowest bitrate to preserve stream.");
+                    if (hls && hls.levels && hls.levels.length > 0) {
+                        // Find the lowest level based on bandwidth (most robust metric for weak networks)
+                        const lowestLevelIndex = hls.levels.reduce((minIdx, lvl, idx, arr) => {
+                            return (lvl.bandwidth < arr[minIdx].bandwidth) ? idx : minIdx;
+                        }, 0);
+                        
+                        if (hls.currentLevel !== lowestLevelIndex) {
+                            hls.currentLevel = lowestLevelIndex;
+                        }
+                    }
+                }, 3000);
+            });
+
+            nativeVideo.addEventListener('playing', () => {
+                clearTimeout(stallTimer); // Clear timer when playback resumes successfully
+            });
+
+            // Safe, dynamic re-instantiation of Plyr on the freshly fetched DOM video element
+            const freshVideo = document.getElementById('video-player');
+            player = new Plyr(freshVideo, {
+                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+                settings: ['quality', 'speed'],
+                keyboard: { focused: true, global: true },
+                i18n: {
+                    qualityLabel: {
+                        0: 'Auto'
+                    }
+                },
+                ...plyrOptions
+            });
+            
+            player.play().catch(() => {});
+        });
+    } else if (nativeVideo.canPlayType('application/vnd.apple.mpegurl')) {
+        nativeVideo.src = url; 
+        player = new Plyr(nativeVideo, {
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+            settings: ['quality', 'speed'],
+            keyboard: { focused: true, global: true },
+            i18n: {
+                qualityLabel: {
+                    0: 'Auto'
+                }
+            }
+        });
+        player.play().catch(() => {});
     }
 }
 
