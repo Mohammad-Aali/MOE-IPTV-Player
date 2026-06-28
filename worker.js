@@ -698,9 +698,125 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
   object-fit: contain !important;
   height: 100% !important;
 }
+
+/* Desktop default: hide all mobile-only UI */
+#mobile-header,
+#mobile-bottom-nav,
+#mobile-mini-player,
+#mobile-player-back { display: none !important; }
+
+/* Mobile layout (<768px): one screen at a time */
+@media (max-width: 767px) {
+  #mobile-header { display: flex !important; flex-direction: column; align-items: stretch;
+    padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top));
+    background: #16161E; border-bottom: 1px solid #2A2B36; shrink: 0;
+    position: sticky; top: 0; z-index: 100;
+  }
+  #mobile-back { display: none; }
+  body.mobile-view-channels #mobile-back,
+  body.mobile-view-player #mobile-back { display: flex; }
+  body { flex-direction: column; height: 100dvh; }
+  #mobile-bottom-nav { display: flex !important; justify-content: space-around; align-items: center;
+    padding: 8px 12px; padding-bottom: max(8px, env(safe-area-inset-bottom));
+    background: #1A1B26; border-top: 1px solid #2A2B36; shrink: 0; z-index: 40;
+  }
+  .mobile-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 12px; border-radius: 12px; color: #8F93A2; font-size: 10px; text-decoration: none; }
+  .mobile-nav-btn.is-active { color: #fff; background: #2A2B38; }
+  .mobile-nav-btn .material-icons { font-size: 22px; }
+  #app-main { flex: 1; min-height: 0; width: 100%; flex-direction: column !important; overflow: hidden; }
+  #desktop-nav-rail, #collapse-btn { display: none !important; }
+  #sidebar { width: 100% !important; flex: 1; min-height: 0; }
+  #sidebar.collapsed { width: 100% !important; }
+  #category-panel { width: 100% !important; min-width: 0 !important; opacity: 1 !important; pointer-events: auto !important; padding-top: 16px !important; }
+  #channel-panel { width: 100% !important; flex: 1; min-height: 0; padding-top: 16px !important; display: none; }
+  #player-panel { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: 0; z-index: 30; }
+  #mobile-player-back { display: none !important; position: absolute; top: 12px; left: 12px; z-index: 25;
+    align-items: center; gap: 6px; padding: 8px 14px; border-radius: 9999px;
+    background: rgba(0,0,0,0.65); color: #fff; font-size: 13px; font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(8px); }
+  #app-main.mobile-view-categories #sidebar { display: flex; }
+  #app-main.mobile-view-categories #channel-panel { display: none; }
+  #app-main.mobile-view-channels #sidebar { display: none; }
+  #app-main.mobile-view-channels #channel-panel { display: flex; }
+  #app-main.mobile-view-player #sidebar,
+  #app-main.mobile-view-player #channel-panel { display: none; }
+  #app-main.mobile-view-player #player-panel { display: flex; top: var(--mobile-header-h, 57px); z-index: 30; }
+  body.mobile-view-player #mobile-player-back { display: flex !important; }
+  body.mobile-view-player #mobile-bottom-nav { display: none !important; }
+  body.mobile-view-player #mobile-search-row { display: none; }
+  #mobile-search-row { width: 100%; margin-top: 10px; }
+  #mobile-search-row .search-input-wrap { position: relative; }
+  #mobile-search-row .search-input-wrap .material-icons { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #8F93A2; font-size: 18px; }
+  #mobile-search-bar {
+    width: 100%; background: #242530; border: 1px solid transparent; border-radius: 10px;
+    padding: 10px 12px 10px 36px; font-size: 14px; color: #fff; outline: none;
+  }
+  #mobile-search-bar:focus { border-color: #4B5563; }
+  #mobile-search-bar::placeholder { color: #6B7280; }
+  #channel-panel .desktop-search-wrap { display: none; }
+  #mobile-mini-player { display: none !important; position: fixed; left: 0; right: 0; bottom: 56px; z-index: 90;
+    padding: 0 12px; padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+  body.mobile-has-playing.mobile-view-categories #mobile-mini-player,
+  body.mobile-has-playing.mobile-view-channels #mobile-mini-player { display: block !important; }
+  #mobile-mini-player .mini-player-row { display: flex; align-items: center; gap: 8px; }
+  #mobile-mini-player-btn {
+    flex: 1; display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 12px; background: #2D5BE3; color: #fff;
+    border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  }
+  #mobile-mini-stop {
+    width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: #272733; color: #fff; border: 1px solid #3A3B48;
+  }
+  #mobile-mini-player .mini-label { font-size: 10px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.05em; }
+  #mobile-mini-player .mini-name { font-size: 13px; font-weight: 600; flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body.mobile-has-playing.mobile-view-channels #channel-list { padding-bottom: 72px; }
+  body.mobile-has-playing.mobile-view-categories #category-list { padding-bottom: 72px; }
+  .nav-btn.is-active { transform: none; }
+  #now-playing-container .relative { padding: 16px !important; padding-bottom: 80px !important; width: 100% !important; }
+  #np-title { font-size: 1.5rem !important; line-height: 1.2; }
+  #now-playing-container p.text-gray-300 { display: none; }
+}
+
+/* Desktop (≥768px): classic 3-column layout */
+@media (min-width: 768px) {
+  #app-main { flex-direction: row !important; }
+  #sidebar, #channel-panel, #player-panel { display: flex !important; }
+  #player-panel {
+    position: relative !important; top: auto !important; left: auto !important;
+    right: auto !important; bottom: auto !important; flex: 1 !important;
+  }
+  #category-panel { opacity: 1 !important; pointer-events: auto !important; }
+  body.mobile-view-categories #sidebar,
+  body.mobile-view-channels #sidebar,
+  body.mobile-view-player #sidebar { display: flex !important; }
+  body.mobile-view-categories #channel-panel,
+  body.mobile-view-channels #channel-panel,
+  body.mobile-view-player #channel-panel { display: flex !important; }
+}
 </style>
 </head>
 <body class="bg-tv-bg text-white h-screen overflow-hidden flex selection:bg-gray-700">
+<header id="mobile-header">
+<div class="flex items-center gap-3 w-full">
+<button id="mobile-back" type="button" class="w-10 h-10 rounded-full bg-[#272733] flex items-center justify-center text-gray-300 shrink-0">
+<span class="material-icons" style="font-size: 20px;">arrow_back</span>
+</button>
+<div class="flex-1 min-w-0">
+<h1 id="mobile-title" class="text-base font-semibold truncate">Live TV</h1>
+<p id="mobile-subtitle" class="text-xs text-gray-500 truncate">Browse categories</p>
+</div>
+</div>
+<div id="mobile-search-row">
+<div class="search-input-wrap">
+<span class="material-icons">search</span>
+<input type="search" id="mobile-search-bar" placeholder="Search all channels..." autocomplete="off">
+</div>
+</div>
+</header>
+<div id="app-main" class="flex flex-1 min-h-0 w-full overflow-hidden mobile-view-categories">
 <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="bg-[#1C1D26] border border-[#2A2B36] rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
         <div class="flex items-center justify-between p-6 border-b border-[#2A2B36] shrink-0">
@@ -740,7 +856,7 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
 </div>
 
 <div id="sidebar" class="flex h-full shrink-0 bg-tv-bg z-20 overflow-hidden relative">
-<div class="w-20 shrink-0 flex flex-col items-center py-10 gap-6 z-30 bg-tv-bg">
+<div id="desktop-nav-rail" class="w-20 shrink-0 flex flex-col items-center py-10 gap-6 z-30 bg-tv-bg">
 <button id="collapse-btn" class="w-10 h-10 rounded-full bg-[#272733] hover:bg-gray-600 flex items-center justify-center text-gray-400 hover:text-white transition-colors mb-6">
 <span id="collapse-icon" class="material-icons" style="font-size: 20px;">chevron_left</span>
 </button>
@@ -771,8 +887,8 @@ box-shadow: 0 0 12px rgba(255,255,255,0.6);
 </div>
 </div>
 
-<div class="w-[380px] shrink-0 bg-tv-panel flex flex-col py-10 px-6 z-10 relative">
-<div class="relative mb-6">
+<div id="channel-panel" class="w-[380px] shrink-0 bg-tv-panel flex flex-col py-10 px-6 z-10 relative">
+<div class="desktop-search-wrap relative mb-6">
 <span class="material-icons absolute left-3 top-2.5 text-gray-500" style="font-size: 18px;">search</span>
 <input type="text" id="search-bar" placeholder="Search channels..."
 class="w-full bg-tv-card border border-transparent rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors">
@@ -782,7 +898,10 @@ class="w-full bg-tv-card border border-transparent rounded-lg pl-10 pr-4 py-2.5 
 </div>
 </div>
 
-<div class="flex-1 relative bg-black flex flex-col justify-end transition-all duration-300 z-0">
+<div id="player-panel" class="flex-1 relative bg-black flex flex-col justify-end transition-all duration-300 z-0">
+<button id="mobile-player-back" type="button">
+<span class="material-icons" style="font-size:18px;">arrow_back</span> <span id="mobile-player-back-label">Channel list</span>
+</button>
 <video id="video-player" class="absolute inset-0 w-full h-full object-contain z-0" controls autoplay></video>
 <div id="now-playing-container" class="absolute inset-0 z-10 flex flex-col justify-end opacity-0 transition-opacity duration-1000 pointer-events-none">
 <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-0"></div>
@@ -796,6 +915,29 @@ class="w-full bg-tv-card border border-transparent rounded-lg pl-10 pr-4 py-2.5 
 <h1 id="np-title" class="text-4xl font-bold mb-3 text-white tracking-tight drop-shadow-lg">Select a channel</h1>
 <p class="text-gray-300 text-sm leading-relaxed max-w-2xl drop-shadow-md">Enjoy premium live television. Select a channel from the list on the left to begin streaming immediately.</p>
 </div>
+</div>
+</div>
+</div>
+
+<nav id="mobile-bottom-nav">
+<button type="button" id="mobile-nav-home" class="mobile-nav-btn is-active"><span class="material-icons">live_tv</span>Live</button>
+<button type="button" id="mobile-nav-fav" class="mobile-nav-btn"><span class="material-icons">star</span>Favorites</button>
+<button type="button" id="mobile-nav-settings" class="mobile-nav-btn"><span class="material-icons">settings</span>Sources</button>
+<a href="?action=logout" class="mobile-nav-btn"><span class="material-icons">logout</span>Logout</a>
+</nav>
+
+<div id="mobile-mini-player">
+<div class="mini-player-row">
+<button type="button" id="mobile-mini-player-btn">
+<div class="flex-1 min-w-0 text-left">
+<div class="mini-label">Now playing · tap to expand</div>
+<div class="mini-name" id="mobile-mini-name">—</div>
+</div>
+<span class="material-icons" style="font-size:22px;">open_in_full</span>
+</button>
+<button type="button" id="mobile-mini-stop" title="Stop playback" aria-label="Stop playback">
+<span class="material-icons" style="font-size:20px;">close</span>
+</button>
 </div>
 </div>
 
@@ -840,6 +982,217 @@ const navSettings = document.getElementById('nav-settings');
 const sidebar = document.getElementById('sidebar');
 const collapseBtn = document.getElementById('collapse-btn');
 const settingsModal = document.getElementById('settings-modal');
+const appMain = document.getElementById('app-main');
+const mobileBack = document.getElementById('mobile-back');
+const mobileTitle = document.getElementById('mobile-title');
+const mobileSubtitle = document.getElementById('mobile-subtitle');
+const mobileNavHome = document.getElementById('mobile-nav-home');
+const mobileNavFav = document.getElementById('mobile-nav-fav');
+const mobileNavSettings = document.getElementById('mobile-nav-settings');
+const mobileSearchBar = document.getElementById('mobile-search-bar');
+const mobilePlayerBackLabel = document.getElementById('mobile-player-back-label');
+const mobileMiniName = document.getElementById('mobile-mini-name');
+const mobileMiniPlayerBtn = document.getElementById('mobile-mini-player-btn');
+const mobileMiniStop = document.getElementById('mobile-mini-stop');
+
+let mobileView = 'categories';
+let mobileListContext = { type: 'browse', title: 'Live TV', subtitle: 'Browse categories', backLabel: 'Channel list' };
+let currentPlayingName = '';
+
+function isMobile() { return window.innerWidth < 768; }
+
+function syncSearchInputs(value) {
+    searchInput.value = value;
+    mobileSearchBar.value = value;
+}
+
+function setMobileListContext(type, title, subtitle, backLabel) {
+    mobileListContext = { type, title, subtitle, backLabel: backLabel || title };
+    updatePlayerBackLabel();
+}
+
+function updatePlayerBackLabel() {
+    if (mobilePlayerBackLabel) mobilePlayerBackLabel.innerText = mobileListContext.backLabel;
+}
+
+function setCurrentPlaying(name) {
+    currentPlayingName = name;
+    if (mobileMiniName) mobileMiniName.innerText = name || '—';
+    document.body.classList.toggle('mobile-has-playing', !!name && isMobile());
+}
+
+function stopPlayback() {
+    if (hls) { hls.destroy(); hls = null; }
+    if (player) { player.destroy(); player = null; }
+    const nativeVideo = document.getElementById('video-player');
+    if (nativeVideo) {
+        nativeVideo.pause();
+        nativeVideo.removeAttribute('src');
+        nativeVideo.load();
+    }
+    if (activeChannelBtn) {
+        activeChannelBtn.classList.remove('is-active');
+        activeChannelBtn = null;
+    }
+    setCurrentPlaying('');
+    npTitle.innerText = 'Select a channel';
+    if (isMobile() && mobileView === 'player') mobileGoBack();
+}
+
+function runSearch(query) {
+    const q = query.toLowerCase().trim();
+    syncSearchInputs(query);
+    if (q === '') {
+        if (mobileListContext.type === 'search') {
+            setMobileListContext('browse', 'Live TV', \`\${globalChannelsData.length} channels\`, 'Categories');
+            if (isMobile()) {
+                setMobileView('categories');
+                updateMobileHeader('Live TV', \`\${globalChannelsData.length} channels\`);
+                channelListEl.innerHTML = '<div class="text-sm text-gray-500 mt-4 px-2">Select a category or search above.</div>';
+            }
+        } else if (navFav.classList.contains('is-active')) {
+            renderFavorites();
+        } else if (activeCategoryBtn) {
+            activeCategoryBtn.click();
+        }
+        return;
+    }
+    const filtered = globalChannelsData.filter(ch => ch.name.toLowerCase().includes(q));
+    categoryHeader.innerText = 'Search Results';
+    document.getElementById('total-channels-count').innerText = \`\${filtered.length} Channels found\`;
+    setMobileListContext('search', 'Search', \`\${filtered.length} results\`, 'Search results');
+    renderChannels(filtered);
+    if (isMobile()) {
+        setMobileView('channels');
+        updateMobileHeader('Search', \`\${filtered.length} results · pick a channel\`);
+    }
+}
+
+function playChannelMobile(ch, btn) {
+    if (activeChannelBtn) activeChannelBtn.classList.remove('is-active');
+    btn.classList.add('is-active');
+    activeChannelBtn = btn;
+    npTitle.innerText = ch.name;
+    nowPlayingContainer.classList.remove('opacity-0');
+    setTimeout(() => nowPlayingContainer.classList.add('opacity-0'), 4000);
+    playStream(\`?action=proxy&url=\${encodeURIComponent(ch.url)}\`);
+    setCurrentPlaying(ch.name);
+    if (isMobile()) {
+        setMobileView('player');
+        updateMobileHeader(ch.name, 'Now playing · back returns to your list');
+    }
+}
+
+function setMobileView(view) {
+    mobileView = view;
+    appMain.classList.remove('mobile-view-categories', 'mobile-view-channels', 'mobile-view-player');
+    document.body.classList.remove('mobile-view-categories', 'mobile-view-channels', 'mobile-view-player');
+    appMain.classList.add('mobile-view-' + view);
+    document.body.classList.add('mobile-view-' + view);
+    syncMobileHeaderHeight();
+}
+
+function updateMobileHeader(title, subtitle) {
+    mobileTitle.innerText = title;
+    mobileSubtitle.innerText = subtitle || '';
+}
+
+function syncMobileNav(active) {
+    [mobileNavHome, mobileNavFav, mobileNavSettings].forEach(btn => btn.classList.remove('is-active'));
+    if (active === 'home') mobileNavHome.classList.add('is-active');
+    else if (active === 'fav') mobileNavFav.classList.add('is-active');
+    else if (active === 'settings') mobileNavSettings.classList.add('is-active');
+}
+
+function mobileGoBack() {
+    if (mobileView === 'player') {
+        setMobileView('channels');
+        updateMobileHeader(mobileListContext.title, mobileListContext.subtitle);
+        updatePlayerBackLabel();
+    } else if (mobileView === 'channels') {
+        if (mobileListContext.type === 'search') {
+            setMobileView('categories');
+            updateMobileHeader('Live TV', 'Search or pick a category');
+            syncMobileNav('home');
+        } else {
+            setMobileView('categories');
+            updateMobileHeader('Live TV', \`\${globalChannelsData.length} channels\`);
+            syncMobileNav('home');
+            if (mobileListContext.type !== 'favorites') {
+                channelListEl.innerHTML = '<div class="text-sm text-gray-500 mt-4 px-2">Select a category or search above.</div>';
+            }
+        }
+    }
+}
+
+mobileBack.addEventListener('click', mobileGoBack);
+document.getElementById('mobile-player-back').addEventListener('click', mobileGoBack);
+mobileMiniPlayerBtn.addEventListener('click', () => {
+    if (currentPlayingName) {
+        setMobileView('player');
+        updateMobileHeader(currentPlayingName, 'Now playing · back returns to your list');
+    }
+});
+mobileMiniStop.addEventListener('click', (e) => {
+    e.stopPropagation();
+    stopPlayback();
+});
+
+mobileSearchBar.addEventListener('input', (e) => runSearch(e.target.value));
+searchInput.addEventListener('input', (e) => runSearch(e.target.value));
+
+function syncMobileHeaderHeight() {
+    const header = document.getElementById('mobile-header');
+    if (header && isMobile()) {
+        document.documentElement.style.setProperty('--mobile-header-h', header.offsetHeight + 'px');
+    }
+}
+function applyLayoutMode() {
+    if (isMobile()) {
+        syncMobileHeaderHeight();
+        setMobileView(mobileView);
+        document.body.classList.toggle('mobile-has-playing', !!currentPlayingName);
+    } else {
+        document.body.classList.remove('mobile-view-categories', 'mobile-view-channels', 'mobile-view-player', 'mobile-has-playing');
+        appMain.classList.remove('mobile-view-categories', 'mobile-view-channels', 'mobile-view-player');
+    }
+}
+
+syncMobileHeaderHeight();
+applyLayoutMode();
+
+mobileNavHome.addEventListener('click', () => {
+    syncMobileNav('home');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('is-active'));
+    navHome.classList.add('is-active');
+    if (activeCategoryBtn) activeCategoryBtn.classList.remove('is-active');
+    activeCategoryBtn = null;
+    categoryHeader.innerText = "Live TV's";
+    document.getElementById('total-channels-count').innerText = \`\${globalChannelsData.length} Channels\`;
+    searchInput.value = '';
+    mobileSearchBar.value = '';
+    if (isMobile()) {
+        setMobileView('categories');
+        setMobileListContext('browse', 'Live TV', \`\${globalChannelsData.length} channels\`, 'Categories');
+        updateMobileHeader('Live TV', \`\${globalChannelsData.length} channels\`);
+        channelListEl.innerHTML = '<div class="text-sm text-gray-500 mt-4 px-2">Select a category or search above.</div>';
+    } else {
+        if (activeCategoryBtn) activeCategoryBtn.click();
+        else { const fb = categoryListEl.querySelector('button'); if (fb) fb.click(); }
+    }
+});
+
+mobileNavFav.addEventListener('click', () => {
+    syncMobileNav('fav');
+    navFav.click();
+});
+
+mobileNavSettings.addEventListener('click', () => {
+    syncMobileNav('settings');
+    navSettings.click();
+});
+
+window.addEventListener('resize', applyLayoutMode);
 
 let globalChannelsData = [];
 let categories = {};
@@ -882,8 +1235,15 @@ function processData() {
     });
     document.getElementById('total-channels-count').innerText = \`\${globalChannelsData.length} Channels\`;
     renderCategories();
-    const firstBtn = categoryListEl.querySelector('button');
-    if (firstBtn) firstBtn.click();
+    if (isMobile()) {
+        setMobileView('categories');
+        setMobileListContext('browse', 'Live TV', \`\${globalChannelsData.length} channels\`, 'Categories');
+        updateMobileHeader('Live TV', \`\${globalChannelsData.length} channels · search or pick a category\`);
+        channelListEl.innerHTML = '<div class="text-sm text-gray-500 mt-4 px-2">Select a category or search above.</div>';
+    } else {
+        const firstBtn = categoryListEl.querySelector('button');
+        if (firstBtn) firstBtn.click();
+    }
 }
 
 function renderCategories() {
@@ -917,7 +1277,14 @@ function renderCategories() {
             categoryHeader.innerText = "Live TV's";
             document.getElementById('total-channels-count').innerText = \`\${globalChannelsData.length} Channels\`;
             searchInput.value = '';
+            mobileSearchBar.value = '';
             renderChannels(groupChannels);
+            if (isMobile()) {
+                setMobileListContext('category', groupName, \`\${groupChannels.length} channels\`, groupName);
+                setMobileView('channels');
+                updateMobileHeader(groupName, \`\${groupChannels.length} channels · tap to play\`);
+                syncMobileNav('home');
+            }
         };
         categoryListEl.appendChild(btn);
     });
@@ -930,9 +1297,15 @@ function renderFavorites() {
     navFav.classList.add('is-active');
     categoryHeader.innerText = "Favorites";
     searchInput.value = '';
+    mobileSearchBar.value = '';
     const favChannels = globalChannelsData.filter(ch => getFavorites().includes(ch.id));
     document.getElementById('total-channels-count').innerText = \`\${favChannels.length} Channels\`;
     renderChannels(favChannels);
+    if (isMobile()) {
+        setMobileListContext('favorites', 'Favorites', \`\${favChannels.length} channels\`, 'Favorites');
+        setMobileView('channels');
+        updateMobileHeader('Favorites', \`\${favChannels.length} channels · tap to play\`);
+    }
 }
 
 function renderChannels(channelsArray) {
@@ -998,13 +1371,7 @@ function renderChannels(channelsArray) {
             let hideBannerTimeout;
             btn.onclick = (e) => {
                 if (e.target.closest('.star-btn')) return;
-                if (activeChannelBtn) activeChannelBtn.classList.remove('is-active');
-                btn.classList.add('is-active'); activeChannelBtn = btn;
-                npTitle.innerText = ch.name;
-                nowPlayingContainer.classList.remove('opacity-0');
-                clearTimeout(hideBannerTimeout);
-                hideBannerTimeout = setTimeout(() => nowPlayingContainer.classList.add('opacity-0'), 4000);
-                playStream(\`?action=proxy&url=\${encodeURIComponent(ch.url)}\`);
+                playChannelMobile(ch, btn);
             };
             
             const starEl = btn.querySelector('.star-btn');
@@ -1040,19 +1407,6 @@ navFav.addEventListener('click', renderFavorites);
 navHome.addEventListener('click', () => {
     if (activeCategoryBtn) activeCategoryBtn.click();
     else { const fb = categoryListEl.querySelector('button'); if (fb) fb.click(); }
-});
-
-searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    if (query === '') {
-        if (navFav.classList.contains('is-active')) { renderFavorites(); }
-        else if (activeCategoryBtn) { activeCategoryBtn.click(); }
-        return;
-    }
-    const filtered = globalChannelsData.filter(ch => ch.name.toLowerCase().includes(query));
-    categoryHeader.innerText = "Search Results";
-    document.getElementById('total-channels-count').innerText = \`\${filtered.length} Channels found\`;
-    renderChannels(filtered);
 });
 
 function playStream(url) {
